@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Remix: Remix: Remix: Remix: Remix: Aktipan",
+  "description": "Platform direktori aktivitas interaktif siap pakai untuk membantu trainer, MC, fasilitator, HR, guru, komunitas, EO, panitia, dan penyelenggara acara menemukan, menyimpan, dan menjalankan aktivitas interaktif.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

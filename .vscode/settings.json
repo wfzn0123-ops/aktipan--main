@@ -1,0 +1,5 @@
+{
+  "terminal.integrated.env.windows": {
+    "PATH": "C:\\laragon\\bin\\nodejs\\node-v22;${env:PATH}"
+  }
+}

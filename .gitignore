@@ -1,0 +1,38 @@
+﻿# Monorepo root gitignore
+
+# Node Modules — never commit
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Environment files — keep only examples
+.env
+.env.local
+.env.*.local
+be_aktipan-main/.env
+fe_aktipan-main/.env
+!.env.example
+!**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+
+# TypeScript build info
+*.tsbuildinfo

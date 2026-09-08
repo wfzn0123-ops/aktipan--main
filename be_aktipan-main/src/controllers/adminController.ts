@@ -1,0 +1,299 @@
+import { Response } from 'express';
+import bcrypt from 'bcryptjs';
+import { db } from '../database/db.js';
+import { AuthenticatedRequest } from '../middleware/auth.js';
+import { User, UserRole } from '../types/index.js';
+import { resetSeedToDefaults } from '../database/seed.js';
+
+export async function getStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const users = db.getUsers();
+    const activities = db.getActivities();
+    const packs = db.getPacks();
+    const sessions = db.getSessions();
+    const auditLogs = db.getAuditLogs(10);
+
+    // Calculate role distribution
+    const roleCounts: Record<string, number> = {
+      Admin: 0,
+      Trainer: 0,
+      'MC / Host': 0,
+      Fasilitator: 0,
+      'HR / L&D': 0,
+      'Guru / Dosen': 0,
+      EO: 0
+    };
+
+    users.forEach(u => {
+      if (roleCounts[u.role] !== undefined) {
+        roleCounts[u.role]++;
+      } else {
+        roleCounts[u.role] = 1;
+      }
+    });
+
+    const activeUsersCount = users.filter(u => u.isActive).length;
+    const freeActivitiesCount = activities.filter(a => a.is_free).length;
+    const premiumActivitiesCount = activities.length - freeActivitiesCount;
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalUsers: users.length,
+        activeUsers: activeUsersCount,
+        totalActivities: activities.length,
+        freeActivities: freeActivitiesCount,
+        premiumActivities: premiumActivitiesCount,
+        totalPacks: packs.length,
+        totalSessions: sessions.length,
+        roleDistribution: roleCounts,
+        recentLogs: auditLogs,
+        systemHealth: {
+          status: 'HEALTHY',
+          uptimeSeconds: Math.floor(process.uptime()),
+          nodeVersion: process.version,
+          memoryUsageMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          serverTime: new Date().toISOString()
+        }
+      }
+    });
+  } catch (error: any) {
+    console.error('Admin getStats error:', error);
+    res.status(500).json({ success: false, message: 'Gagal memuat statistik admin.', error: error.message });
+  }
+}
+
+export async function getUsers(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { q, role, status } = req.query;
+    let users = db.getUsers();
+
+    if (q && typeof q === 'string') {
+      const query = q.toLowerCase();
+      users = users.filter(
+        u => u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query) || (u.phone && u.phone.includes(query))
+      );
+    }
+
+    if (role && typeof role === 'string' && role !== 'all') {
+      users = users.filter(u => u.role === role);
+    }
+
+    if (status && typeof status === 'string' && status !== 'all') {
+      const isActive = status === 'active';
+      users = users.filter(u => u.isActive === isActive);
+    }
+
+    // Sanitize passwords
+    const sanitized = users.map(u => {
+      const { password, ...safe } = u;
+      return safe;
+    });
+
+    res.status(200).json({
+      success: true,
+      count: sanitized.length,
+      users: sanitized
+    });
+  } catch (error: any) {
+    console.error('Admin getUsers error:', error);
+    res.status(500).json({ success: false, message: 'Gagal memuat daftar pengguna.', error: error.message });
+  }
+}
+
+export async function updateUserRole(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { role, isActive } = req.body;
+
+    const user = db.getUserById(id);
+    if (!user) {
+      res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+      return;
+    }
+
+    const updates: any = {};
+    if (role) {
+      const validRoles: UserRole[] = ['Admin', 'Trainer', 'MC / Host', 'Fasilitator', 'HR / L&D', 'Guru / Dosen', 'EO'];
+      if (!validRoles.includes(role)) {
+        res.status(400).json({ success: false, message: 'Peran tidak valid.' });
+        return;
+      }
+      updates.role = role;
+    }
+
+    if (typeof isActive === 'boolean') {
+      updates.isActive = isActive;
+    }
+
+    const updatedUser = db.updateUser(id, updates);
+    if (!updatedUser) {
+      res.status(404).json({ success: false, message: 'Gagal memperbarui pengguna.' });
+      return;
+    }
+
+    db.insertAuditLog(
+      'ADMIN_UPDATE_USER',
+      `Admin ${req.user?.name} mengubah user ${updatedUser.name} (${updatedUser.email}): role=${updatedUser.role}, active=${updatedUser.isActive}`,
+      req.user?.userId,
+      req.user?.name,
+      req.ip
+    );
+
+    const { password, ...safe } = updatedUser;
+
+    res.status(200).json({
+      success: true,
+      message: `Data pengguna ${updatedUser.name} berhasil diperbarui.`,
+      user: safe
+    });
+  } catch (error: any) {
+    console.error('Admin updateUserRole error:', error);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui pengguna.', error: error.message });
+  }
+}
+
+export async function deleteUser(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user?.userId) {
+      res.status(400).json({
+        success: false,
+        message: 'Anda tidak dapat menghapus akun admin yang sedang Anda gunakan saat ini.'
+      });
+      return;
+    }
+
+    const targetUser = db.getUserById(id);
+    if (!targetUser) {
+      res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+      return;
+    }
+
+    const success = db.deleteUser(id);
+    if (!success) {
+      res.status(500).json({ success: false, message: 'Gagal menghapus pengguna dari database.' });
+      return;
+    }
+
+    db.insertAuditLog(
+      'ADMIN_DELETE_USER',
+      `Admin ${req.user?.name} menghapus user: ${targetUser.name} (${targetUser.email})`,
+      req.user?.userId,
+      req.user?.name,
+      req.ip
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Pengguna ${targetUser.name} berhasil dihapus.`
+    });
+  } catch (error: any) {
+    console.error('Admin deleteUser error:', error);
+    res.status(500).json({ success: false, message: 'Gagal menghapus pengguna.', error: error.message });
+  }
+}
+
+export async function getAuditLogs(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+    const logs = db.getAuditLogs(limit);
+
+    res.status(200).json({
+      success: true,
+      count: logs.length,
+      logs
+    });
+  } catch (error: any) {
+    console.error('Admin getAuditLogs error:', error);
+    res.status(500).json({ success: false, message: 'Gagal memuat audit log.', error: error.message });
+  }
+}
+
+export async function createUser(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { name, email, phone, password, role, location, whatsapp } = req.body;
+
+    if (!name || !name.trim()) {
+      res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi.' });
+      return;
+    }
+
+    if (!email || !email.trim() || !email.includes('@')) {
+      res.status(400).json({ success: false, message: 'Email tidak valid.' });
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      res.status(400).json({ success: false, message: 'Password minimal 6 karakter.' });
+      return;
+    }
+
+    const existingUser = db.getUserByEmail(email.trim());
+    if (existingUser) {
+      res.status(409).json({ success: false, message: 'Alamat email sudah terdaftar.' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const validRoles: UserRole[] = ['Admin', 'Trainer', 'MC / Host', 'Fasilitator', 'HR / L&D', 'Guru / Dosen', 'EO'];
+    const assignedRole: UserRole = validRoles.includes(role) ? role : 'Trainer';
+
+    const newUser: User = {
+      id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : '',
+      password: hashedPassword,
+      role: assignedRole,
+      location: location ? location.trim() : 'Indonesia',
+      whatsapp: whatsapp ? whatsapp.trim() : (phone ? phone.trim() : ''),
+      photoUrl: '',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    db.insertUser(newUser);
+
+    db.insertAuditLog(
+      'ADMIN_CREATE_USER',
+      `Admin ${req.user?.name} membuat akun baru: ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}`,
+      req.user?.userId,
+      req.user?.name,
+      req.ip
+    );
+
+    const { password: _, ...safeUser } = newUser;
+
+    res.status(201).json({
+      success: true,
+      message: `Pengguna ${newUser.name} berhasil ditambahkan ke sistem.`,
+      user: safeUser
+    });
+  } catch (error: any) {
+    console.error('Admin createUser error:', error);
+    res.status(500).json({ success: false, message: 'Gagal membuat pengguna baru.', error: error.message });
+  }
+}
+
+export async function resetDatabaseSeed(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    await resetSeedToDefaults();
+    db.insertAuditLog(
+      'ADMIN_SEED_RESET',
+      `Admin ${req.user?.name} me-reset database ke data awal standar.`,
+      req.user?.userId,
+      req.user?.name,
+      req.ip
+    );
+    res.status(200).json({
+      success: true,
+      message: 'Database berhasil di-reset ke data bawaan awal (132 aktivitas, 10 paket, 3 akun).'
+    });
+  } catch (error: any) {
+    console.error('Admin resetDatabaseSeed error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mereset database seed.', error: error.message });
+  }
+}
