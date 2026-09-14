@@ -3,8 +3,8 @@ import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { WebSocketServer, WebSocket } from 'ws';
+import { connectDB } from './database/db.js';
 import { seedDatabase } from './database/seed.js';
-import { db } from './database/db.js';
 
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -65,12 +65,7 @@ app.get('/api/health', (req, res) => {
     version: '1.0.0',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
-    database: {
-      usersCount: db.getUsers().length,
-      activitiesCount: db.getActivities().length,
-      sessionsCount: db.getSessions().length,
-      packsCount: db.getPacks().length
-    }
+    database: 'MongoDB'
   });
 });
 
@@ -482,9 +477,10 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Start Server & Seed Database
+// Start Server & Connect to MongoDB
 async function start() {
   try {
+    await connectDB();
     await seedDatabase();
     server.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`====================================================`);
@@ -499,28 +495,9 @@ async function start() {
   }
 }
 
-// Seed database on module load (needed for Vercel serverless cold starts)
-// seedDatabase() adalah idempotent – hanya mengisi data jika belum ada
-let seeded = false;
-async function ensureSeeded() {
-  if (!seeded) {
-    await seedDatabase();
-    seeded = true;
-  }
-}
-
-// Jalankan server lokal jika bukan environment Vercel serverless
-const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
-
-if (!isVercel) {
-  start();
-} else {
-  // Di Vercel, seed sekali saat cold start
-  ensureSeeded().catch(console.error);
-}
+start();
 
 export { app, server };
 
-// Default export untuk Vercel serverless handler
+// Default export untuk Railway/Vercel handler
 export default app;
-

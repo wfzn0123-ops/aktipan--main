@@ -1,83 +1,72 @@
 import bcrypt from 'bcryptjs';
-import { db } from './db.js';
-import { User, Activity, ActivityPack, Session } from '../types/index.js';
+import { UserModel, ActivityModel, ActivityPackModel, SessionModel, AuditLogModel } from '../models/index.js';
+import { Activity, ActivityPack, Session } from '../types/index.js';
 
 export async function seedDatabase() {
-  const users = db.getUsers();
-  
+  const userCount = await UserModel.countDocuments();
+
   // Seed Users if empty
-  if (users.length === 0) {
+  if (userCount === 0) {
     console.log('🌱 Seeding default users...');
     const hashedAdminPassword = await bcrypt.hash('admin123', 10);
     const hashedTrainerPassword = await bcrypt.hash('password123', 10);
     const hashedMcPassword = await bcrypt.hash('password123', 10);
 
-    const adminUser: User = {
-      id: 'usr_admin_001',
-      name: 'Super Admin Aktipan',
-      email: 'admin@aktipan.com',
-      phone: '+62 811-9988-7766',
-      password: hashedAdminPassword,
-      role: 'Admin',
-      location: 'Jakarta Headquarter',
-      whatsapp: '+62 811-9988-7766',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    await UserModel.create([
+      {
+        name: 'Super Admin Aktipan',
+        email: 'admin@aktipan.com',
+        phone: '+62 811-9988-7766',
+        password: hashedAdminPassword,
+        role: 'Admin',
+        location: 'Jakarta Headquarter',
+        whatsapp: '+62 811-9988-7766',
+        isActive: true
+      },
+      {
+        name: 'Andika Pratama',
+        email: 'andika@aktipan.com',
+        phone: '+62 812-3456-7890',
+        password: hashedTrainerPassword,
+        role: 'Trainer',
+        location: 'Jakarta, Indonesia',
+        whatsapp: '+62 812-3456-7890',
+        isActive: true
+      },
+      {
+        name: 'Sarah Amanda',
+        email: 'sarah@aktipan.com',
+        phone: '+62 813-5566-7788',
+        password: hashedMcPassword,
+        role: 'MC / Host',
+        location: 'Bandung, Indonesia',
+        whatsapp: '+62 813-5566-7788',
+        isActive: true
+      }
+    ]);
 
-    const trainerUser: User = {
-      id: 'usr_trainer_002',
-      name: 'Andika Pratama',
-      email: 'andika@aktipan.com',
-      phone: '+62 812-3456-7890',
-      password: hashedTrainerPassword,
-      role: 'Trainer',
-      location: 'Jakarta, Indonesia',
-      whatsapp: '+62 812-3456-7890',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    await AuditLogModel.create({
+      action: 'SYSTEM_INIT',
+      details: 'Database seeded with default Admin and Demo accounts.'
+    });
 
-    const mcUser: User = {
-      id: 'usr_mc_003',
-      name: 'Sarah Amanda',
-      email: 'sarah@aktipan.com',
-      phone: '+62 813-5566-7788',
-      password: hashedMcPassword,
-      role: 'MC / Host',
-      location: 'Bandung, Indonesia',
-      whatsapp: '+62 813-5566-7788',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    db.insertUser(adminUser);
-    db.insertUser(trainerUser);
-    db.insertUser(mcUser);
-
-    db.insertAuditLog('SYSTEM_INIT', 'Database seeded with default Admin and Demo accounts.', adminUser.id, adminUser.name);
     console.log('✅ Users seeded: admin@aktipan.com (admin123), andika@aktipan.com (password123)');
   }
 
   // Seed All 132 Activities if less than 100
-  const activities = db.getActivities();
-  if (activities.length < 100) {
+  const activityCount = await ActivityModel.countDocuments();
+  if (activityCount < 100) {
     console.log('🌱 Seeding full 132 standard activities...');
     const generatedActivities = generateAll132Activities();
     for (const act of generatedActivities) {
-      if (!db.getActivityById(act.id)) {
-        db.insertActivity(act);
-      }
+      await ActivityModel.updateOne({ id: act.id }, act, { upsert: true });
     }
-    console.log(`✅ Database now has ${db.getActivities().length} activities.`);
+    console.log(`✅ Activities seeded: ${generatedActivities.length} total.`);
   }
 
-  // Seed Activity Packs if empty or less than 10
-  const packs = db.getPacks();
-  if (packs.length < 10) {
+  // Seed Activity Packs if less than 10
+  const packCount = await ActivityPackModel.countDocuments();
+  if (packCount < 10) {
     console.log('🌱 Seeding activity packs...');
     const defaultPacks: ActivityPack[] = [
       { id: 1, title: 'Ice Breaking Pack', category: 'Ice Breaking', description: 'Koleksi 10 aktivitas pemecah kebekuan suasana tercepat.', activityCount: 10, price: 'Free', isPro: false, activities: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], highlights: ['100% Praktis', 'Tanpa Ribet'] },
@@ -92,21 +81,20 @@ export async function seedDatabase() {
       { id: 10, title: 'Special & Travel Games Pack', category: 'Travel & Special', description: 'Pencair kantuk sepanjang jalan di bus wisata atau tour.', activityCount: 12, price: 'Rp 59.000', isPro: true, activities: [121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132], highlights: ['Tour & Bus', 'Acara Spesial'] }
     ];
     for (const p of defaultPacks) {
-      if (!db.getPackById(p.id)) {
-        db.insertPack(p);
-      }
+      await ActivityPackModel.updateOne({ id: p.id }, p, { upsert: true });
     }
     console.log(`✅ ${defaultPacks.length} packs seeded successfully.`);
   }
 
   // Seed Sessions if empty
-  const sessions = db.getSessions();
-  if (sessions.length === 0) {
+  const sessionCount = await SessionModel.countDocuments();
+  if (sessionCount === 0) {
     console.log('🌱 Seeding initial sessions...');
-    const defaultSessions: Session[] = [
+    const adminUser = await UserModel.findOne({ email: 'andika@aktipan.com' });
+    const userId = adminUser ? adminUser.id : 'unknown';
+    await SessionModel.create([
       {
-        id: 'sess-1',
-        userId: 'usr_trainer_002',
+        userId,
         name: 'Rapat Kerja Tahunan 2026',
         date: '2026-06-25',
         context: 'Corporate Gathering',
@@ -114,13 +102,10 @@ export async function seedDatabase() {
         participantCount: 45,
         activityIds: [1, 11, 31],
         notes: 'Buka dengan ice breaking fakta, pertengahan beri tepuk fokus.',
-        status: 'Draft',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        status: 'Draft'
       },
       {
-        id: 'sess-2',
-        userId: 'usr_trainer_002',
+        userId,
         name: 'Seminar Motivasi Mahasiswa Baru',
         date: '2026-07-02',
         context: 'MPLS Campus',
@@ -128,14 +113,9 @@ export async function seedDatabase() {
         participantCount: 150,
         activityIds: [2, 13, 112],
         notes: 'Fokus refleksi di penutup panggung.',
-        status: 'Berjalan',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        status: 'Berjalan'
       }
-    ];
-    for (const s of defaultSessions) {
-      db.insertSession(s);
-    }
+    ]);
   }
 }
 
@@ -144,108 +124,49 @@ export async function resetSeedToDefaults(): Promise<void> {
   const hashedTrainerPassword = await bcrypt.hash('password123', 10);
   const hashedMcPassword = await bcrypt.hash('password123', 10);
 
-  const adminUser: User = {
-    id: 'usr_admin_001',
-    name: 'Super Admin Aktipan',
-    email: 'admin@aktipan.com',
-    phone: '+62 811-9988-7766',
-    password: hashedAdminPassword,
-    role: 'Admin',
-    location: 'Jakarta Headquarter',
-    whatsapp: '+62 811-9988-7766',
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  // Clear all collections
+  const { UserModel, ActivityModel, ActivityPackModel, SessionModel, SavedActivityModel, AuditLogModel } = await import('../models/index.js');
+  await Promise.all([
+    UserModel.deleteMany({}),
+    ActivityModel.deleteMany({}),
+    ActivityPackModel.deleteMany({}),
+    SessionModel.deleteMany({}),
+    SavedActivityModel.deleteMany({}),
+    AuditLogModel.deleteMany({})
+  ]);
 
-  const trainerUser: User = {
-    id: 'usr_trainer_002',
-    name: 'Andika Pratama',
-    email: 'andika@aktipan.com',
-    phone: '+62 812-3456-7890',
-    password: hashedTrainerPassword,
-    role: 'Trainer',
-    location: 'Jakarta, Indonesia',
-    whatsapp: '+62 812-3456-7890',
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  const mcUser: User = {
-    id: 'usr_mc_003',
-    name: 'Sarah Amanda',
-    email: 'sarah@aktipan.com',
-    phone: '+62 813-5566-7788',
-    password: hashedMcPassword,
-    role: 'MC / Host',
-    location: 'Bandung, Indonesia',
-    whatsapp: '+62 813-5566-7788',
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  await UserModel.create([
+    { name: 'Super Admin Aktipan', email: 'admin@aktipan.com', phone: '+62 811-9988-7766', password: hashedAdminPassword, role: 'Admin', location: 'Jakarta Headquarter', whatsapp: '+62 811-9988-7766', isActive: true },
+    { name: 'Andika Pratama', email: 'andika@aktipan.com', phone: '+62 812-3456-7890', password: hashedTrainerPassword, role: 'Trainer', location: 'Jakarta, Indonesia', whatsapp: '+62 812-3456-7890', isActive: true },
+    { name: 'Sarah Amanda', email: 'sarah@aktipan.com', phone: '+62 813-5566-7788', password: hashedMcPassword, role: 'MC / Host', location: 'Bandung, Indonesia', whatsapp: '+62 813-5566-7788', isActive: true }
+  ]);
 
   const defaultPacks: ActivityPack[] = [
-    { id: 1, title: 'Ice Breaking Pack', category: 'Ice Breaking', description: 'Koleksi 10 aktivitas pemecah kebekuan suasana tercepat.', activityCount: 10, price: 'Free', isPro: false, activities: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], highlights: ['100% Praktis', 'Tanpa Ribet'] },
-    { id: 2, title: 'Energizer Pack', category: 'Energizer', description: 'Koleksi 10 aktivitas pengusir kantuk dan penambah fokus.', activityCount: 10, price: 'Rp 49.000', isPro: true, activities: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20], highlights: ['Super Energik', 'Meningkatkan Fokus'] },
-    { id: 3, title: 'Team Building Pack', category: 'Team Building', description: 'Koleksi lengkap aktivitas mengasah sinergi dan trust tim.', activityCount: 10, price: 'Rp 99.000', isPro: true, activities: [31, 32, 33, 34, 35, 36, 37, 38, 39, 40], highlights: ['Bonding Kuat', 'Problem Solving'] },
-    { id: 4, title: 'Communication Games Pack', category: 'Communication', description: 'Asah kejelasan instruksi verbal dan non-verbal tim.', activityCount: 10, price: 'Rp 79.000', isPro: true, activities: [41, 42, 43, 44, 45, 46, 47, 48, 49, 50], highlights: ['Active Listening', 'Bebas Miskom'] },
-    { id: 5, title: 'Leadership Games Pack', category: 'Leadership', description: 'Melatih delegasi krisis, pengambilan keputusan taktis.', activityCount: 10, price: 'Rp 149.000', isPro: true, activities: [51, 52, 53, 54, 55, 56, 57, 58, 59, 60], highlights: ['Kepemimpinan Nyata', 'Crisis Management'] },
-    { id: 6, title: 'Problem Solving Pack', category: 'Problem Solving', description: 'Kasus pelik, alokasi budget, brainstorming kolaboratif.', activityCount: 10, price: 'Rp 99.000', isPro: true, activities: [61, 62, 63, 64, 65, 66, 67, 68, 69, 70], highlights: ['Analisis Mendalam', 'Solusi Strategis'] },
-    { id: 7, title: 'Sales Role Play Pack', category: 'Sales & Service', description: 'Handling objection, elevator pitch battle siap pakai.', activityCount: 10, price: 'Rp 149.000', isPro: true, activities: [71, 72, 73, 74, 75, 76, 77, 78, 79, 80], highlights: ['Negosiasi Tajam', 'Closing Ampuh'] },
-    { id: 8, title: 'Quiz & Polling Pack', category: 'Quiz & Polling', description: 'Bank soal interaktif penarik antusiasme masa rapat.', activityCount: 10, price: 'Free', isPro: false, activities: [81, 82, 83, 84, 85, 86, 87, 88, 89, 90], highlights: ['Live Polling', 'Seru & Cepat'] },
-    { id: 9, title: 'Reflection Pack', category: 'Reflection', description: 'Menutup sesi dengan meaning mendalam dan komitmen aksi.', activityCount: 10, price: 'Rp 49.000', isPro: true, activities: [111, 112, 113, 114, 115, 116, 117, 118, 119, 120], highlights: ['Meaningful Closing', 'Action Plan'] },
-    { id: 10, title: 'Special & Travel Games Pack', category: 'Travel & Special', description: 'Pencair kantuk sepanjang jalan di bus wisata atau tour.', activityCount: 12, price: 'Rp 59.000', isPro: true, activities: [121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132], highlights: ['Tour & Bus', 'Acara Spesial'] }
-  ];
-
-  const defaultSessions: Session[] = [
-    {
-      id: 'sess-1',
-      userId: 'usr_trainer_002',
-      name: 'Rapat Kerja Tahunan 2026',
-      date: '2026-06-25',
-      context: 'Corporate Gathering',
-      audience: 'Manager & Staf Divisi HR',
-      participantCount: 45,
-      activityIds: [1, 11, 31],
-      notes: 'Buka dengan ice breaking fakta, pertengahan beri tepuk fokus.',
-      status: 'Draft',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    },
-    {
-      id: 'sess-2',
-      userId: 'usr_trainer_002',
-      name: 'Seminar Motivasi Mahasiswa Baru',
-      date: '2026-07-02',
-      context: 'MPLS Campus',
-      audience: 'Mahasiswa Baru angkatan 2026',
-      participantCount: 150,
-      activityIds: [2, 13, 112],
-      notes: 'Fokus refleksi di penutup panggung.',
-      status: 'Berjalan',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
+    { id: 1, title: 'Ice Breaking Pack', category: 'Ice Breaking', description: 'Koleksi 10 aktivitas pemecah kebekuan suasana tercepat.', activityCount: 10, price: 'Free', isPro: false, activities: [1,2,3,4,5,6,7,8,9,10], highlights: ['100% Praktis', 'Tanpa Ribet'] },
+    { id: 2, title: 'Energizer Pack', category: 'Energizer', description: 'Koleksi 10 aktivitas pengusir kantuk dan penambah fokus.', activityCount: 10, price: 'Rp 49.000', isPro: true, activities: [11,12,13,14,15,16,17,18,19,20], highlights: ['Super Energik', 'Meningkatkan Fokus'] },
+    { id: 3, title: 'Team Building Pack', category: 'Team Building', description: 'Koleksi lengkap aktivitas mengasah sinergi dan trust tim.', activityCount: 10, price: 'Rp 99.000', isPro: true, activities: [31,32,33,34,35,36,37,38,39,40], highlights: ['Bonding Kuat', 'Problem Solving'] },
+    { id: 4, title: 'Communication Games Pack', category: 'Communication', description: 'Asah kejelasan instruksi verbal dan non-verbal tim.', activityCount: 10, price: 'Rp 79.000', isPro: true, activities: [41,42,43,44,45,46,47,48,49,50], highlights: ['Active Listening', 'Bebas Miskom'] },
+    { id: 5, title: 'Leadership Games Pack', category: 'Leadership', description: 'Melatih delegasi krisis, pengambilan keputusan taktis.', activityCount: 10, price: 'Rp 149.000', isPro: true, activities: [51,52,53,54,55,56,57,58,59,60], highlights: ['Kepemimpinan Nyata', 'Crisis Management'] },
+    { id: 6, title: 'Problem Solving Pack', category: 'Problem Solving', description: 'Kasus pelik, alokasi budget, brainstorming kolaboratif.', activityCount: 10, price: 'Rp 99.000', isPro: true, activities: [61,62,63,64,65,66,67,68,69,70], highlights: ['Analisis Mendalam', 'Solusi Strategis'] },
+    { id: 7, title: 'Sales Role Play Pack', category: 'Sales & Service', description: 'Handling objection, elevator pitch battle siap pakai.', activityCount: 10, price: 'Rp 149.000', isPro: true, activities: [71,72,73,74,75,76,77,78,79,80], highlights: ['Negosiasi Tajam', 'Closing Ampuh'] },
+    { id: 8, title: 'Quiz & Polling Pack', category: 'Quiz & Polling', description: 'Bank soal interaktif penarik antusiasme masa rapat.', activityCount: 10, price: 'Free', isPro: false, activities: [81,82,83,84,85,86,87,88,89,90], highlights: ['Live Polling', 'Seru & Cepat'] },
+    { id: 9, title: 'Reflection Pack', category: 'Reflection', description: 'Menutup sesi dengan meaning mendalam dan komitmen aksi.', activityCount: 10, price: 'Rp 49.000', isPro: true, activities: [111,112,113,114,115,116,117,118,119,120], highlights: ['Meaningful Closing', 'Action Plan'] },
+    { id: 10, title: 'Special & Travel Games Pack', category: 'Travel & Special', description: 'Pencair kantuk sepanjang jalan di bus wisata atau tour.', activityCount: 12, price: 'Rp 59.000', isPro: true, activities: [121,122,123,124,125,126,127,128,129,130,131,132], highlights: ['Tour & Bus', 'Acara Spesial'] }
   ];
 
   const allActivities = generateAll132Activities();
+  await ActivityModel.insertMany(allActivities);
+  for (const p of defaultPacks) {
+    await ActivityPackModel.updateOne({ id: p.id }, p, { upsert: true });
+  }
 
-  db.resetData({
-    users: [adminUser, trainerUser, mcUser],
-    activities: allActivities,
-    packs: defaultPacks,
-    sessions: defaultSessions,
-    savedActivities: [],
-    auditLogs: [{
-      id: `log_${Date.now()}_seed_reset`,
-      action: 'SYSTEM_SEED_RESET',
-      details: 'Database berhasil di-reset ulang ke data bawaan lengkap (132 Aktivitas, 10 Paket, 3 Akun).',
-      userName: 'Super Admin',
-      timestamp: new Date().toISOString()
-    }]
+  await AuditLogModel.create({
+    action: 'SYSTEM_SEED_RESET',
+    details: 'Database berhasil di-reset ulang ke data bawaan lengkap (132 Aktivitas, 10 Paket, 3 Akun).',
+    userName: 'Super Admin'
   });
+
+  console.log('✅ Database reset to defaults complete.');
 }
 
 export function generateAll132Activities(): Activity[] {

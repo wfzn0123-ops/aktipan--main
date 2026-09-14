@@ -1,9 +1,9 @@
 import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db } from '../database/db.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
-import { User, UserRole } from '../types/index.js';
+import { UserRole } from '../types/index.js';
+import { UserModel, AuditLogModel } from '../models/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'aktipan_super_secret_jwt_key_2026_production_grade';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -28,7 +28,7 @@ export async function register(req: AuthenticatedRequest, res: Response): Promis
     }
 
     // Check if email already registered
-    const existingUser = db.getUserByEmail(email.trim());
+    const existingUser = await UserModel.findOne({ email: email.trim().toLowerCase() });
     if (existingUser) {
       res.status(409).json({
         success: false,
@@ -43,8 +43,7 @@ export async function register(req: AuthenticatedRequest, res: Response): Promis
       ? role
       : 'Trainer';
 
-    const newUser: User = {
-      id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    const newUser = await UserModel.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       phone: phone ? phone.trim() : '',
@@ -53,15 +52,17 @@ export async function register(req: AuthenticatedRequest, res: Response): Promis
       location: location ? location.trim() : 'Indonesia',
       whatsapp: whatsapp ? whatsapp.trim() : (phone ? phone.trim() : ''),
       photoUrl: '',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    db.insertUser(newUser);
+      isActive: true
+    });
 
     // Audit log
-    db.insertAuditLog('USER_REGISTER', `Pendaftaran akun baru: ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}`, newUser.id, newUser.name, req.ip);
+    await AuditLogModel.create({
+      action: 'USER_REGISTER',
+      details: `Pendaftaran akun baru: ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}`,
+      userId: newUser.id,
+      userName: newUser.name,
+      ipAddress: req.ip
+    });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -76,7 +77,8 @@ export async function register(req: AuthenticatedRequest, res: Response): Promis
     );
 
     // Remove password from response
-    const { password: _, ...userSafe } = newUser;
+    const userSafe = newUser.toJSON();
+    delete userSafe.password;
 
     // Set cookie for browser session support
     res.cookie('aktipan_auth_token', token, {
@@ -111,7 +113,7 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
       return;
     }
 
-    const user = db.getUserByEmail(email.trim());
+    const user = await UserModel.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
       res.status(401).json({
         success: false,
@@ -151,10 +153,17 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
     );
 
     // Audit log
-    db.insertAuditLog('USER_LOGIN', `Login sukses: ${user.name} (${user.email}) - Peran: ${user.role}`, user.id, user.name, req.ip);
+    await AuditLogModel.create({
+      action: 'USER_LOGIN',
+      details: `Login sukses: ${user.name} (${user.email}) - Peran: ${user.role}`,
+      userId: user.id,
+      userName: user.name,
+      ipAddress: req.ip
+    });
 
     // Remove password from response
-    const { password: _, ...userSafe } = user;
+    const userSafe = user.toJSON();
+    delete userSafe.password;
 
     // Set cookie for browser session support
     res.cookie('aktipan_auth_token', token, {
@@ -187,13 +196,14 @@ export async function getMe(req: AuthenticatedRequest, res: Response): Promise<v
       return;
     }
 
-    const user = db.getUserById(req.user.userId);
+    const user = await UserModel.findById(req.user.userId);
     if (!user) {
       res.status(404).json({ success: false, message: 'Data pengguna tidak ditemukan.' });
       return;
     }
 
-    const { password: _, ...userSafe } = user;
+    const userSafe = user.toJSON();
+    delete userSafe.password;
 
     res.status(200).json({
       success: true,
@@ -208,7 +218,13 @@ export async function getMe(req: AuthenticatedRequest, res: Response): Promise<v
 export async function logout(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     if (req.user) {
-      db.insertAuditLog('USER_LOGOUT', `Logout sukses: ${req.user.name}`, req.user.userId, req.user.name, req.ip);
+      await AuditLogModel.create({
+        action: 'USER_LOGOUT',
+        details: `Logout sukses: ${req.user.name}`,
+        userId: req.user.userId,
+        userName: req.user.name,
+        ipAddress: req.ip
+      });
     }
     res.clearCookie('aktipan_auth_token', { path: '/' });
     res.clearCookie('aktipan_token', { path: '/' });
@@ -229,7 +245,7 @@ export async function updateProfile(req: AuthenticatedRequest, res: Response): P
     }
 
     const { name, phone, role, photoUrl, location, whatsapp } = req.body;
-    const updates: Partial<User> = {};
+    const updates: any = {};
 
     if (name && name.trim()) updates.name = name.trim();
     if (phone !== undefined) updates.phone = phone.trim();
@@ -237,7 +253,7 @@ export async function updateProfile(req: AuthenticatedRequest, res: Response): P
     if (location !== undefined) updates.location = location;
     if (whatsapp !== undefined) updates.whatsapp = whatsapp;
 
-    // Allow user to change role (unless demoting from Admin by non-admin)
+    // Allow user to change role
     if (role && ['Trainer', 'MC / Host', 'Fasilitator', 'HR / L&D', 'Guru / Dosen', 'EO', 'Admin'].includes(role)) {
       if (role === 'Admin' && req.user.role !== 'Admin') {
         // Non-admins cannot self-promote to Admin via general profile update
@@ -246,15 +262,22 @@ export async function updateProfile(req: AuthenticatedRequest, res: Response): P
       }
     }
 
-    const updatedUser = db.updateUser(req.user.userId, updates);
+    const updatedUser = await UserModel.findByIdAndUpdate(req.user.userId, updates, { new: true });
     if (!updatedUser) {
       res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
       return;
     }
 
-    db.insertAuditLog('USER_UPDATE_PROFILE', `Pembaruan profil pengguna: ${updatedUser.name}`, updatedUser.id, updatedUser.name, req.ip);
+    await AuditLogModel.create({
+      action: 'USER_UPDATE_PROFILE',
+      details: `Pembaruan profil pengguna: ${updatedUser.name}`,
+      userId: updatedUser.id,
+      userName: updatedUser.name,
+      ipAddress: req.ip
+    });
 
-    const { password: _, ...userSafe } = updatedUser;
+    const userSafe = updatedUser.toJSON();
+    delete userSafe.password;
 
     res.status(200).json({
       success: true,
@@ -286,7 +309,7 @@ export async function changePassword(req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    const user = db.getUserById(req.user.userId);
+    const user = await UserModel.findById(req.user.userId);
     if (!user) {
       res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
       return;
@@ -299,9 +322,16 @@ export async function changePassword(req: AuthenticatedRequest, res: Response): 
     }
 
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-    db.updateUser(user.id, { password: hashedNewPassword });
+    user.password = hashedNewPassword;
+    await user.save();
 
-    db.insertAuditLog('PASSWORD_CHANGED', `Password diubah oleh user: ${user.name}`, user.id, user.name, req.ip);
+    await AuditLogModel.create({
+      action: 'PASSWORD_CHANGED',
+      details: `Password diubah oleh user: ${user.name}`,
+      userId: user.id,
+      userName: user.name,
+      ipAddress: req.ip
+    });
 
     res.status(200).json({
       success: true,
