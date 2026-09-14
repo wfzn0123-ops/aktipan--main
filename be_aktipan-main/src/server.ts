@@ -74,6 +74,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Root endpoint so it doesn't show 404
+app.get('/', (req, res) => {
+  res.send('AKTIPAN Backend API is running! Access /api/health to check status.');
+});
+
 // Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
