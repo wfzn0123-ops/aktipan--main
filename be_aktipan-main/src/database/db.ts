@@ -6,7 +6,8 @@ import { User, Activity, ActivityPack, Session, SavedActivity, AuditLog } from '
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = path.resolve(__dirname, '../../data');
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
+const DATA_DIR = isVercel ? '/tmp/data' : path.resolve(__dirname, '../../data');
 const DB_FILE = path.join(DATA_DIR, 'database.json');
 
 export interface DatabaseSchema {

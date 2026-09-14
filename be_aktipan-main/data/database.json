@@ -9327,6 +9327,69 @@
       "details": "Pendaftaran akun baru: Dinar Trainer (dinar@aktipan.com) - Peran: Trainer",
       "ipAddress": "127.0.0.1",
       "timestamp": "2026-09-08T07:27:31.866Z"
+    },
+    {
+      "id": "log_1789115624794_h1mio",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Super Admin Aktipan (admin@aktipan.com) - Peran: Admin",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-11T08:33:44.794Z"
+    },
+    {
+      "id": "log_1789115644795_vv2sh",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Super Admin Aktipan (admin@aktipan.com) - Peran: Admin",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-11T08:34:04.796Z"
+    },
+    {
+      "id": "log_1789115678189_7nis2",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGOUT",
+      "details": "Logout sukses: Super Admin Aktipan",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-11T08:34:38.189Z"
+    },
+    {
+      "id": "log_1789115681528_ao49l",
+      "userId": "usr_trainer_002",
+      "userName": "Andika Pratama",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Andika Pratama (andika@aktipan.com) - Peran: Trainer",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-11T08:34:41.528Z"
+    },
+    {
+      "id": "log_1789115715294_umwi2",
+      "userId": "usr_trainer_002",
+      "userName": "Andika Pratama",
+      "action": "USER_LOGOUT",
+      "details": "Logout sukses: Andika Pratama",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-11T08:35:15.295Z"
+    },
+    {
+      "id": "log_1789115718729_142oa",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Super Admin Aktipan (admin@aktipan.com) - Peran: Admin",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-11T08:35:18.729Z"
+    },
+    {
+      "id": "log_1789358853110_6blj6",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Super Admin Aktipan (admin@aktipan.com) - Peran: Admin",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-14T04:07:33.111Z"
     }
   ]
 }

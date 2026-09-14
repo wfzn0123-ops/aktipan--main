@@ -243,6 +243,25 @@ export default function AdminDashboard({
     return matchesSearch && matchesRole;
   });
 
+  // Filtered activities list
+  const filteredActivities = activities.filter(act => {
+    const matchesSearch = !activitySearch || 
+      act.activity_name.toLowerCase().includes(activitySearch.toLowerCase()) || 
+      (act.short_description && act.short_description.toLowerCase().includes(activitySearch.toLowerCase()));
+    const matchesCategory = activityCategoryFilter === 'all' || act.category === activityCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Filtered logs list
+  const filteredLogs = auditLogs.filter(log => {
+    const matchesSearch = !logSearch || 
+      log.action.toLowerCase().includes(logSearch.toLowerCase()) || 
+      (log.userName && log.userName.toLowerCase().includes(logSearch.toLowerCase())) ||
+      (log.details && log.details.toLowerCase().includes(logSearch.toLowerCase())) ||
+      (log.ipAddress && log.ipAddress.includes(logSearch));
+    return matchesSearch;
+  });
+
   // Handle Update User Role
   const handleSaveUserRole = async () => {
     if (!selectedUserForEdit) return;

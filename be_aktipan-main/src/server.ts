@@ -28,7 +28,10 @@ app.use(cors({
   origin: (origin, callback) => {
     // allow requests with no origin (like mobile apps, curl, postman)
     if (!origin) return callback(null, true);
-    if (CORS_ORIGIN.includes('*') || CORS_ORIGIN.includes(origin) || CORS_ORIGIN.some(o => origin.startsWith(o))) {
+    // Allow all Vercel deployment URLs (*.vercel.app) and configured origins
+    const isVercelDomain = origin.endsWith('.vercel.app');
+    const isConfiguredOrigin = CORS_ORIGIN.includes('*') || CORS_ORIGIN.includes(origin) || CORS_ORIGIN.some(o => origin.startsWith(o));
+    if (isVercelDomain || isConfiguredOrigin) {
       return callback(null, true);
     }
     return callback(null, true); // Permissive in dev/local
@@ -37,6 +40,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -490,6 +494,28 @@ async function start() {
   }
 }
 
-start();
+// Seed database on module load (needed for Vercel serverless cold starts)
+// seedDatabase() adalah idempotent – hanya mengisi data jika belum ada
+let seeded = false;
+async function ensureSeeded() {
+  if (!seeded) {
+    await seedDatabase();
+    seeded = true;
+  }
+}
+
+// Jalankan server lokal jika bukan environment Vercel serverless
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
+
+if (!isVercel) {
+  start();
+} else {
+  // Di Vercel, seed sekali saat cold start
+  ensureSeeded().catch(console.error);
+}
 
 export { app, server };
+
+// Default export untuk Vercel serverless handler
+export default app;
+

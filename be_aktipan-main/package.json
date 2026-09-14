@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "vercel-build": "tsc",
     "start": "tsx src/server.ts",
+    "start:prod": "node dist/server.js",
     "seed": "tsx src/database/seed.ts"
   },
   "dependencies": {
