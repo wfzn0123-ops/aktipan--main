@@ -14,9 +14,7 @@ export default function Footer({ onOpenTerms }: FooterProps) {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between border-b border-slate-800 pb-8 gap-6 text-center md:text-left">
           <div className="flex flex-col items-center md:items-start">
-            <span className="text-lg sm:text-xl font-bold tracking-tight text-white select-none">
-              AKTI<span className="text-orange-500">PAN</span>
-            </span>
+            <img src="/aktipan_logo.png" alt="AKTIPAN" className="h-8 sm:h-10 mb-2" />
             <p className="mt-2 text-xs sm:text-sm text-slate-400 max-w-md leading-relaxed">
               {t('Platform direktori aktivitas interaktif siap pakai yang mengubah peserta pasif menjadi partisipan aktif dan ceria.')}
             </p>
