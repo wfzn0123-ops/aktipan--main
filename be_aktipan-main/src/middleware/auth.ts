@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthTokenPayload, UserRole } from '../types/index.js';
-import { db } from '../database/db.js';
+import { UserModel } from '../models/index.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: AuthTokenPayload & { fullUser?: any };
@@ -33,7 +33,7 @@ export function extractToken(req: Request): string | null {
   return null;
 }
 
-export function verifyToken(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export async function verifyToken(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   const token = extractToken(req);
 
   if (!token) {
@@ -48,7 +48,7 @@ export function verifyToken(req: AuthenticatedRequest, res: Response, next: Next
     const decoded = jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
     
     // Check if user still exists in database and is active
-    const user = db.getUserById(decoded.userId);
+    const user = await UserModel.findOne({ id: decoded.userId }).lean() as any;
     if (!user) {
       res.status(401).json({
         success: false,
@@ -89,15 +89,16 @@ export function verifyToken(req: AuthenticatedRequest, res: Response, next: Next
   }
 }
 
-export function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export async function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   const token = extractToken(req);
   if (!token) {
-    return next();
+    next();
+    return;
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
-    const user = db.getUserById(decoded.userId);
+    const user = await UserModel.findOne({ id: decoded.userId }).lean() as any;
     if (user && user.isActive) {
       req.user = {
         ...decoded,
@@ -111,6 +112,7 @@ export function optionalAuth(req: AuthenticatedRequest, res: Response, next: Nex
   }
   next();
 }
+
 
 export function requireRole(allowedRoles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
