@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm install", "cd be_aktipan-main && npm install"]
+
+[phases.build]
+cmds = ["cd be_aktipan-main && npm run build"]
+
+[start]
+cmd = "cd be_aktipan-main && npm run start:prod"
