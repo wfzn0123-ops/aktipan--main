@@ -9390,6 +9390,51 @@
       "details": "Login sukses: Super Admin Aktipan (admin@aktipan.com) - Peran: Admin",
       "ipAddress": "127.0.0.1",
       "timestamp": "2026-09-14T04:07:33.111Z"
+    },
+    {
+      "id": "log_1789442329574_8t3px",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Super Admin Aktipan (admin@aktipan.com) - Peran: Admin",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-15T03:18:49.574Z"
+    },
+    {
+      "id": "log_1789442358519_tep5s",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGOUT",
+      "details": "Logout sukses: Super Admin Aktipan",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-15T03:19:18.519Z"
+    },
+    {
+      "id": "log_1789442360485_vg0vq",
+      "userId": "usr_trainer_002",
+      "userName": "Andika Pratama",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Andika Pratama (andika@aktipan.com) - Peran: Trainer",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-15T03:19:20.485Z"
+    },
+    {
+      "id": "log_1789442385352_ncgu9",
+      "userId": "usr_trainer_002",
+      "userName": "Andika Pratama",
+      "action": "USER_LOGOUT",
+      "details": "Logout sukses: Andika Pratama",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-15T03:19:45.352Z"
+    },
+    {
+      "id": "log_1789442395476_z34y2",
+      "userId": "usr_admin_001",
+      "userName": "Super Admin Aktipan",
+      "action": "USER_LOGIN",
+      "details": "Login sukses: Super Admin Aktipan (admin@aktipan.com) - Peran: Admin",
+      "ipAddress": "127.0.0.1",
+      "timestamp": "2026-09-15T03:19:55.476Z"
     }
   ]
 }

@@ -2,12 +2,12 @@
   "name": "be_aktipan-main",
   "version": "1.0.0",
   "description": "Backend API for AKTIPAN Workspace - Active & Fun Games SaaS Platform",
-  "main": "src/server.ts",
+  "main": "dist/server.js",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "vercel-build": "tsc",
+    "build": "rimraf dist && tsc",
+    "vercel-build": "rimraf dist && tsc",
     "start": "tsx src/server.ts",
     "start:prod": "node dist/server.js",
     "seed": "tsx src/database/seed.ts"
@@ -29,6 +29,7 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.8",
     "@types/node": "^22.14.0",
-    "@types/ws": "^8.5.14"
+    "@types/ws": "^8.5.14",
+    "rimraf": "^6.0.1"
   }
 }

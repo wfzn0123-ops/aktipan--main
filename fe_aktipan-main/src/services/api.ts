@@ -64,9 +64,23 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       if (response.status === 401 && token) {
         removeAuthToken();
       }
+      // HTTP/2 omits statusText — provide human-readable fallbacks
+      const STATUS_TEXT: Record<number, string> = {
+        400: 'Bad Request',
+        401: 'Unauthorized – silakan login kembali',
+        403: 'Forbidden – akses ditolak',
+        404: 'Endpoint tidak ditemukan',
+        405: 'Method Not Allowed – backend belum berjalan atau URL salah',
+        408: 'Request Timeout',
+        429: 'Terlalu banyak permintaan',
+        500: 'Internal Server Error',
+        502: 'Bad Gateway – backend tidak merespons',
+        503: 'Service Unavailable',
+      };
+      const statusText = response.statusText || STATUS_TEXT[response.status] || `HTTP ${response.status}`;
       return {
         success: false,
-        message: data.message || `HTTP Error ${response.status}: ${response.statusText}`,
+        message: data.message || `${statusText}`,
         status: response.status,
         ...data
       };

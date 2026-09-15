@@ -1,0 +1,9 @@
+# Railway monorepo configuration
+# Deploy backend from be_aktipan-main subfolder
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "node be_aktipan-main/dist/server.js"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
