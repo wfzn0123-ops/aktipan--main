@@ -8,8 +8,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "rimraf dist && tsc",
     "vercel-build": "rimraf dist && tsc",
-    "start": "tsx src/server.ts",
-    "start:prod": "node dist/server.js",
+    "start": "node dist/server.js",
+    "start:dev": "tsx src/server.ts",
     "seed": "tsx src/database/seed.ts"
   },
   "dependencies": {
