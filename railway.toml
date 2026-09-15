@@ -2,6 +2,7 @@
 # Deploy backend from be_aktipan-main subfolder
 [build]
 builder = "nixpacks"
+buildCommand = "cd be_aktipan-main && npm install && npm run build"
 
 [deploy]
 startCommand = "node be_aktipan-main/dist/server.js"
