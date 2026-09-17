@@ -68,10 +68,11 @@ export default function GameMultiplayer({
     if (soundEnabled) triggerSound('click');
     setConnectionStatus('CONNECTING');
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use window.location.host which handles the correct proxy port automatically in AI Studio!
-    const wsUrl = `${protocol}//${window.location.host}/ws/arena`;
-
+    // Use environment variable for WebSocket URL, fallback to Railway production
+    const envWsUrl = import.meta.env.VITE_WS_ARENA_URL;
+    const wsUrl = envWsUrl || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? `ws://${window.location.host}/ws/arena` 
+      : 'wss://be-aktipan-main.railway.app/ws/arena');
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
