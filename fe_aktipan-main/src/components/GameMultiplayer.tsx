@@ -72,7 +72,7 @@ export default function GameMultiplayer({
     const envWsUrl = import.meta.env.VITE_WS_ARENA_URL;
     const wsUrl = envWsUrl || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
       ? `ws://${window.location.host}/ws/arena` 
-      : 'wss://be-aktipan-main.railway.app/ws/arena');
+      : 'wss://aktipan-main-production.up.railway.app/ws/arena');
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
